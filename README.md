@@ -1,73 +1,86 @@
-# React + TypeScript + Vite
+![Project Preview](https://socialify.git.ci/Ashley-Blu/task4-react-weatherapp/image?language=1&owner=1&name=1&stargazers=1&theme=Light)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+# Weather App 
 
-Currently, two official plugins are available:
+A responsive **React + TypeScript + Tailwind CSS** weather application that allows users to view current weather, hourly and daily forecasts, search for locations, save favorite locations, and customize the app theme. The app also supports offline access and unit switching between Celsius and Fahrenheit.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Real-Time Weather Info**  
+  - Displays current temperature, humidity, wind speed, and weather conditions.  
+  - Shows hourly and daily forecasts.  
+  - Toggle between daily and hourly view.
 
-## Expanding the ESLint configuration
+- **Location-Based Forecasting**  
+  - Automatically detects user’s current location (with permission).  
+  - Search for any city worldwide.  
+  - Save multiple locations for quick access.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **Weather Alerts**  
+  - Push notifications for severe weather alerts.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- **Customization**  
+  - Light and dark theme options.  
+  - Switch between Celsius and Fahrenheit.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+- **Offline Mode**  
+  - Cached weather data for offline viewing.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- **Responsive Design**  
+  - Optimized for desktops, tablets, and mobile devices with Tailwind CSS.  
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Screenshots
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+---
+
+## Installation
+
+1. Clone the repository:
+
+git clone https://github.com/Ashley-Blu/task4-react-weatherapp
+cd weather-app
+
+
+2. Install dependencies
+
+npm install
+
+
+3. Start the development server
+
+npm run dev
+
+
+4. Open the app in your browser
+
+http://localhost:5173
+
+---
+
+## Usage
+
+Grant location permission to view current weather.
+
+Use the search bar to find other locations.
+
+Save favorite locations to quickly switch between them.
+
+Change the theme or temperature unit in the settings menu.
+
+---
+
+## Tech Stack
+
+Frontend: React, TypeScript
+
+Styling: Tailwind CSS
+
+State Management: React Hooks
+
+API: OpenWeatherMap (or any other weather API)
+
+Build Tool: Vite
