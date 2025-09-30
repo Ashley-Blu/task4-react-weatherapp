@@ -1,15 +1,1 @@
-/* Tailwind directives */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* Custom styles */
-:root {
-  font-family: 'Roboto', 'Helvetica Neue', sans-serif;
-}
-
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-}
+@import "tailwindcss";

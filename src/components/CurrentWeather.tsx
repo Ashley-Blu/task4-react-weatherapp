@@ -1,5 +1,5 @@
 import type { WeatherData } from '../services/weatherApi';
-import { WiThermometer, WiHumidity, WiStrongWind, WiBarometer } from 'react-icons/wi';
+import { WiHumidity, WiStrongWind, WiBarometer } from 'react-icons/wi';
 
 interface CurrentWeatherProps {
   data: WeatherData;

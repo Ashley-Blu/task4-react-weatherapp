@@ -5,7 +5,7 @@ interface ForecastProps {
   units: 'metric' | 'imperial';
 }
 
-const Forecast = ({ data, units }: ForecastProps) => {
+const Forecast = ({ data, units, showHourly }: ForecastProps & { showHourly?: boolean }) => {
   const tempUnit = units === 'metric' ? '°C' : '°F';
 
   // Group forecast data by day
@@ -37,16 +37,37 @@ const Forecast = ({ data, units }: ForecastProps) => {
     });
   };
 
-  const dailyForecast = groupByDay(data.list).slice(0, 7);
+  const dailyForecast = groupByDay(data.list).slice(1, 6);
   
   const getWeatherIcon = (iconCode: string) => {
     return `https://openweathermap.org/img/wn/${iconCode}.png`;
   };
 
   return (
+
+
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mt-6">
+
+       {showHourly && (
+        <div className="mt-8">
+          <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-6">Hourly Forecast (Next 12 Hours)</h3>
+          <div className="overflow-x-auto">
+            <div className="flex gap-4">
+              {data.list.slice(0, 12).map((item, idx) => (
+                <div key={idx} className="bg-gray-100 dark:bg-gray-700 rounded-lg p-2 flex flex-col items-center min-w-[105px]">
+                  <span className="text-xs text-gray-700 dark:text-gray-300">{new Date(item.dt * 1000).getHours()}:00</span>
+                  <img src={`https://openweathermap.org/img/wn/${item.weather[0].icon}.png`} alt={item.weather[0].description} className="w-8 h-8" />
+                  <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{Math.round(item.main.temp)}{units === 'metric' ? '°C' : '°F'}</span>
+                  <span className="text-xs text-gray-600 dark:text-gray-400">{item.weather[0].main}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">5-Day Forecast</h2>
+        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mt-10">5-Day Forecast</h2>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -65,6 +86,7 @@ const Forecast = ({ data, units }: ForecastProps) => {
           </div>
         ))}
       </div>
+     
     </div>
   );
 };

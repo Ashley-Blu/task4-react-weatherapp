@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-// OpenWeatherMap API key - in a real app, this would be in an environment variable
+// OpenWeatherMap API key
 const API_KEY = '8c3e1be686d9eecd665edd57befa33b8';
 const BASE_URL = 'https://api.openweathermap.org/data/2.5';
 
