@@ -15,7 +15,6 @@ function App() {
   const [theme, setTheme] = useState<"light" | "dark">(
     () => (localStorage.getItem("theme") as "light" | "dark") || "light"
   );
-
   const [units, setUnits] = useState<"metric" | "imperial">(
     () => (localStorage.getItem("units") as "metric" | "imperial") || "metric"
   );
@@ -24,152 +23,135 @@ function App() {
   const [forecastData, setForecastData] = useState<ForecastData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [savedLocations, setSavedLocations] = useState<string[]>(() =>
-    JSON.parse(localStorage.getItem("savedLocations") || "[]")
+  const [savedLocations, setSavedLocations] = useState<string[]>(
+    () => JSON.parse(localStorage.getItem("savedLocations") || "[]")
   );
   const [currentLocation, setCurrentLocation] = useState<string>("");
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
+  // Apply theme
   useEffect(() => {
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
+    document.documentElement.classList.toggle("dark", theme === "dark");
     localStorage.setItem("theme", theme);
   }, [theme]);
 
-  // Toggle theme
-  const toggleTheme = () => {
-    setTheme((prev) => {
-      const newTheme = prev === "light" ? "dark" : "light";
-      if (newTheme === "dark") {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
-      localStorage.setItem("theme", newTheme);
-      return newTheme;
-    });
-  };
+  // Handle offline/online
+  useEffect(() => {
+    const goOnline = () => setIsOffline(false);
+    const goOffline = () => setIsOffline(true);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
+  }, []);
 
-  // Toggle units
+  // Save last fetched data
+  useEffect(() => {
+    if (weatherData) localStorage.setItem("cachedWeather", JSON.stringify(weatherData));
+  }, [weatherData]);
+
+  useEffect(() => {
+    if (forecastData) localStorage.setItem("cachedForecast", JSON.stringify(forecastData));
+  }, [forecastData]);
+
+  const toggleTheme = () => setTheme(theme === "light" ? "dark" : "light");
   const toggleUnits = () => {
     const newUnits = units === "metric" ? "imperial" : "metric";
     setUnits(newUnits);
     localStorage.setItem("units", newUnits);
-
-    // Refresh weather for current location with new units
     if (currentLocation) fetchWeatherData(currentLocation, newUnits);
   };
 
-  // Fetch weather by location or coordinates
+  // Fetch weather by city
   const fetchWeatherData = async (location: string, unitSystem = units) => {
     try {
       setLoading(true);
       setError(null);
-
-      const weatherResponse = await getWeatherByCity(location, unitSystem);
-      setWeatherData(weatherResponse);
+      const weather = await getWeatherByCity(location, unitSystem);
+      const forecast = await getForecast(location, unitSystem);
+      setWeatherData(weather);
+      setForecastData(forecast);
       setCurrentLocation(location);
 
-      const forecastResponse = await getForecast(location, unitSystem);
-      setForecastData(forecastResponse);
-
       if (!savedLocations.includes(location)) {
-        const updatedLocations = [...savedLocations, location];
-        setSavedLocations(updatedLocations);
-        localStorage.setItem(
-          "savedLocations",
-          JSON.stringify(updatedLocations)
-        );
+        const updated = [...savedLocations, location];
+        setSavedLocations(updated);
+        localStorage.setItem("savedLocations", JSON.stringify(updated));
       }
-    } catch (err) {
-      setError(`Failed to fetch weather data for ${location}`);
-      console.error(err);
+    } catch {
+      setError(`Failed to fetch weather for "${location}"`);
     } finally {
       setLoading(false);
     }
   };
 
-  // On initial load, get user location
+  // Get user location on load
   useEffect(() => {
-    const getLocationWeather = async () => {
+    const fetchLocationWeather = async () => {
+      if (!navigator.geolocation) {
+        fetchWeatherData("Polokwane,ZA");
+        return;
+      }
+
       try {
         setLoading(true);
-
-        if (!navigator.geolocation)
-          throw new Error("Geolocation not supported");
-
-        const position = await new Promise<GeolocationPosition>(
-          (resolve, reject) =>
-            navigator.geolocation.getCurrentPosition(resolve, reject, {
-              enableHighAccuracy: true,
-              timeout: 10000,
-              maximumAge: 0,
-            })
+        const position = await new Promise<GeolocationPosition>((resolve, reject) =>
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 0,
+          })
         );
 
         const { latitude, longitude } = position.coords;
+        const weather = await getWeatherByCoords(latitude, longitude, units);
+        const forecast = await getForecastByCoords(latitude, longitude, units);
 
-        const weatherResponse = await getWeatherByCoords(
-          latitude,
-          longitude,
-          units
-        );
-        setWeatherData(weatherResponse);
-        setCurrentLocation(weatherResponse.name);
+        setWeatherData(weather);
+        setForecastData(forecast);
+        setCurrentLocation(weather.name);
 
-        const forecastResponse = await getForecastByCoords(
-          latitude,
-          longitude,
-          units
-        );
-        setForecastData(forecastResponse);
-
-        if (!savedLocations.includes(weatherResponse.name)) {
-          const updatedLocations = [...savedLocations, weatherResponse.name];
-          setSavedLocations(updatedLocations);
-          localStorage.setItem(
-            "savedLocations",
-            JSON.stringify(updatedLocations)
-          );
+        if (!savedLocations.includes(weather.name)) {
+          const updated = [...savedLocations, weather.name];
+          setSavedLocations(updated);
+          localStorage.setItem("savedLocations", JSON.stringify(updated));
         }
-
         setError(null);
-      } catch (err) {
-        console.error("Error fetching geolocation weather:", err);
-        // Fallback to default location
-        fetchWeatherData("Polokwane,ZA", units);
+      } catch {
+        // Use cached data if offline or error
+        const cachedWeather = localStorage.getItem("cachedWeather");
+        const cachedForecast = localStorage.getItem("cachedForecast");
+
+        if (cachedWeather) setWeatherData(JSON.parse(cachedWeather));
+        if (cachedForecast) setForecastData(JSON.parse(cachedForecast));
+
+        if (!cachedWeather) fetchWeatherData("Polokwane,ZA", units);
       } finally {
         setLoading(false);
       }
     };
 
-    getLocationWeather();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    fetchLocationWeather();
+  }, [units]);
 
-  // Search handler
   const handleSearch = (location: string) => fetchWeatherData(location);
-
-  // Saved location select handler
-  const handleSavedLocationSelect = (location: string) =>
-    fetchWeatherData(location);
-
-  // Remove saved location
+  const handleSavedSelect = (location: string) => fetchWeatherData(location);
   const removeSavedLocation = (location: string) => {
-    const updatedLocations = savedLocations.filter((loc) => loc !== location);
-    setSavedLocations(updatedLocations);
-    localStorage.setItem("savedLocations", JSON.stringify(updatedLocations));
+    const updated = savedLocations.filter((loc) => loc !== location);
+    setSavedLocations(updated);
+    localStorage.setItem("savedLocations", JSON.stringify(updated));
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
       <Header
         theme={theme}
         toggleTheme={toggleTheme}
         units={units}
         toggleUnits={toggleUnits}
+        isOffline={isOffline}
       />
 
       <main className="container mx-auto px-4 py-8">
@@ -179,20 +161,20 @@ function App() {
           <div className="saved-locations my-4">
             <h3 className="font-semibold mb-2">Saved Locations</h3>
             <div className="flex flex-wrap gap-2">
-              {savedLocations.map((location, index) => (
-                <div key={index} className="flex items-center gap-1">
+              {savedLocations.map((loc) => (
+                <div key={loc} className="flex items-center gap-1">
                   <button
-                    onClick={() => handleSavedLocationSelect(location)}
+                    onClick={() => handleSavedSelect(loc)}
                     className={`px-2 py-1 rounded ${
-                      currentLocation === location
+                      currentLocation === loc
                         ? "bg-blue-500 text-white"
                         : "bg-gray-200 dark:bg-gray-700 dark:text-gray-100"
                     }`}
                   >
-                    {location}
+                    {loc}
                   </button>
                   <button
-                    onClick={() => removeSavedLocation(location)}
+                    onClick={() => removeSavedLocation(loc)}
                     className="text-red-500 hover:text-red-700"
                   >
                     ×
@@ -203,21 +185,23 @@ function App() {
           </div>
         )}
 
-        {loading && (
-          <div className="py-8 text-center">Loading weather data...</div>
+        {isOffline && (
+          <div className="p-2 mb-4 bg-red-100 dark:bg-red-400 text-white-700 dark:text-white-200 rounded text-center">
+            You are offline. Showing cached data.
+          </div>
         )}
+
+        {loading && <div className="py-8 text-center">Loading weather data...</div>}
         {error && (
-          <div className="bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 p-4 rounded my-4">
+          <div className="bg-red-100 dark:bg-red-900 text-white-700 dark:text-red-300 p-4 rounded my-4">
             {error}
           </div>
         )}
 
-        {weatherData && !loading && (
+        {weatherData && (
           <div className="weather-container mt-4">
             <CurrentWeather data={weatherData} units={units} />
-            {forecastData && (
-              <Forecast data={forecastData} units={units} showHourly={true} />
-            )}
+            {forecastData && <Forecast data={forecastData} units={units} showHourly />}
           </div>
         )}
       </main>
