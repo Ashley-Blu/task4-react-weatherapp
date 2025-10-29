@@ -18,80 +18,85 @@ function App() {
   const [units, setUnits] = useState<"metric" | "imperial">(
     () => (localStorage.getItem("units") as "metric" | "imperial") || "metric"
   );
-
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [forecastData, setForecastData] = useState<ForecastData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [savedLocations, setSavedLocations] = useState<string[]>(
-    () => JSON.parse(localStorage.getItem("savedLocations") || "[]")
+  const [savedLocations, setSavedLocations] = useState<string[]>(() =>
+    JSON.parse(localStorage.getItem("savedLocations") || "[]")
   );
-  const [currentLocation, setCurrentLocation] = useState<string>("");
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
-  // Apply theme
+  // Track the city currently displayed
+  const [displayedCity, setDisplayedCity] = useState<string>("");
+
+  // Apply theme class
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     localStorage.setItem("theme", theme);
   }, [theme]);
 
-  // Handle offline/online
-  useEffect(() => {
-    const goOnline = () => setIsOffline(false);
-    const goOffline = () => setIsOffline(true);
-    window.addEventListener("online", goOnline);
-    window.addEventListener("offline", goOffline);
-    return () => {
-      window.removeEventListener("online", goOnline);
-      window.removeEventListener("offline", goOffline);
-    };
-  }, []);
+  const toggleTheme = () => setTheme((prev) => (prev === "light" ? "dark" : "light"));
 
-  // Save last fetched data
-  useEffect(() => {
-    if (weatherData) localStorage.setItem("cachedWeather", JSON.stringify(weatherData));
-  }, [weatherData]);
-
-  useEffect(() => {
-    if (forecastData) localStorage.setItem("cachedForecast", JSON.stringify(forecastData));
-  }, [forecastData]);
-
-  const toggleTheme = () => setTheme(theme === "light" ? "dark" : "light");
+  // Toggle units and refresh only the displayed city
   const toggleUnits = () => {
     const newUnits = units === "metric" ? "imperial" : "metric";
     setUnits(newUnits);
     localStorage.setItem("units", newUnits);
-    if (currentLocation) fetchWeatherData(currentLocation, newUnits);
+
+    if (displayedCity) fetchWeatherData(displayedCity, newUnits);
   };
 
-  // Fetch weather by city
-  const fetchWeatherData = async (location: string, unitSystem = units) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const weather = await getWeatherByCity(location, unitSystem);
-      const forecast = await getForecast(location, unitSystem);
-      setWeatherData(weather);
-      setForecastData(forecast);
-      setCurrentLocation(location);
+  // Fetch weather for a city
+  const fetchWeatherData = async (city: string, unitSystem = units) => {
+    setLoading(true);
+    setError(null);
 
-      if (!savedLocations.includes(location)) {
-        const updated = [...savedLocations, location];
-        setSavedLocations(updated);
-        localStorage.setItem("savedLocations", JSON.stringify(updated));
+    try {
+      // If offline, use cached data
+      if (!navigator.onLine) {
+        const cachedWeather = localStorage.getItem(`weather_${city}_${unitSystem}`);
+        const cachedForecast = localStorage.getItem(`forecast_${city}_${unitSystem}`);
+        if (cachedWeather && cachedForecast) {
+          setWeatherData(JSON.parse(cachedWeather));
+          setForecastData(JSON.parse(cachedForecast));
+          setDisplayedCity(city);
+          return;
+        } else {
+          setError("No cached data available offline");
+          return;
+        }
       }
-    } catch {
-      setError(`Failed to fetch weather for "${location}"`);
+
+      const weatherResponse = await getWeatherByCity(city, unitSystem);
+      const forecastResponse = await getForecast(city, unitSystem);
+
+      setWeatherData(weatherResponse);
+      setForecastData(forecastResponse);
+      setDisplayedCity(city);
+
+      // Save to cached storage
+      localStorage.setItem(`weather_${city}_${unitSystem}`, JSON.stringify(weatherResponse));
+      localStorage.setItem(`forecast_${city}_${unitSystem}`, JSON.stringify(forecastResponse));
+
+      // Save to savedLocations
+      if (!savedLocations.includes(city)) {
+        const updatedLocations = [...savedLocations, city];
+        setSavedLocations(updatedLocations);
+        localStorage.setItem("savedLocations", JSON.stringify(updatedLocations));
+      }
+    } catch (err) {
+      console.error(err);
+      setError(`Failed to fetch weather data for ${city}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // Get user location on load
+  // On initial load, get geolocation weather
   useEffect(() => {
-    const fetchLocationWeather = async () => {
+    const getLocationWeather = async () => {
       if (!navigator.geolocation) {
-        fetchWeatherData("Polokwane,ZA");
+        fetchWeatherData("Polokwane,ZA"); // fallback
         return;
       }
 
@@ -100,60 +105,45 @@ function App() {
         const position = await new Promise<GeolocationPosition>((resolve, reject) =>
           navigator.geolocation.getCurrentPosition(resolve, reject, {
             enableHighAccuracy: true,
-            timeout: 15000,
+            timeout: 10000,
             maximumAge: 0,
           })
         );
 
         const { latitude, longitude } = position.coords;
-        const weather = await getWeatherByCoords(latitude, longitude, units);
-        const forecast = await getForecastByCoords(latitude, longitude, units);
+        const weatherResponse = await getWeatherByCoords(latitude, longitude, units);
+        const forecastResponse = await getForecastByCoords(latitude, longitude, units);
 
-        setWeatherData(weather);
-        setForecastData(forecast);
-        setCurrentLocation(weather.name);
+        setWeatherData(weatherResponse);
+        setForecastData(forecastResponse);
+        setDisplayedCity(weatherResponse.name);
 
-        if (!savedLocations.includes(weather.name)) {
-          const updated = [...savedLocations, weather.name];
-          setSavedLocations(updated);
-          localStorage.setItem("savedLocations", JSON.stringify(updated));
-        }
-        setError(null);
-      } catch {
-        // Use cached data if offline or error
-        const cachedWeather = localStorage.getItem("cachedWeather");
-        const cachedForecast = localStorage.getItem("cachedForecast");
-
-        if (cachedWeather) setWeatherData(JSON.parse(cachedWeather));
-        if (cachedForecast) setForecastData(JSON.parse(cachedForecast));
-
-        if (!cachedWeather) fetchWeatherData("Polokwane,ZA", units);
+        // Cache
+        localStorage.setItem(`weather_${weatherResponse.name}_${units}`, JSON.stringify(weatherResponse));
+        localStorage.setItem(`forecast_${weatherResponse.name}_${units}`, JSON.stringify(forecastResponse));
+      } catch (err) {
+        console.error("Error fetching geolocation weather:", err);
+        fetchWeatherData("Polokwane,ZA", units); // fallback
       } finally {
         setLoading(false);
       }
     };
 
-    fetchLocationWeather();
-  }, [units]);
+    getLocationWeather();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const handleSearch = (location: string) => fetchWeatherData(location);
-  const handleSavedSelect = (location: string) => fetchWeatherData(location);
-  const removeSavedLocation = (location: string) => {
-    const updated = savedLocations.filter((loc) => loc !== location);
+  const handleSearch = (city: string) => fetchWeatherData(city);
+  const handleSavedLocationSelect = (city: string) => fetchWeatherData(city);
+  const removeSavedLocation = (city: string) => {
+    const updated = savedLocations.filter((loc) => loc !== city);
     setSavedLocations(updated);
     localStorage.setItem("savedLocations", JSON.stringify(updated));
   };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
-      <Header
-        theme={theme}
-        toggleTheme={toggleTheme}
-        units={units}
-        toggleUnits={toggleUnits}
-        isOffline={isOffline}
-      />
-
+      <Header theme={theme} toggleTheme={toggleTheme} units={units} toggleUnits={toggleUnits} />
       <main className="container mx-auto px-4 py-8">
         <SearchBar onSearch={handleSearch} />
 
@@ -161,20 +151,20 @@ function App() {
           <div className="saved-locations my-4">
             <h3 className="font-semibold mb-2">Saved Locations</h3>
             <div className="flex flex-wrap gap-2">
-              {savedLocations.map((loc) => (
-                <div key={loc} className="flex items-center gap-1">
+              {savedLocations.map((city, idx) => (
+                <div key={idx} className="flex items-center gap-1">
                   <button
-                    onClick={() => handleSavedSelect(loc)}
+                    onClick={() => handleSavedLocationSelect(city)}
                     className={`px-2 py-1 rounded ${
-                      currentLocation === loc
+                      displayedCity === city
                         ? "bg-blue-500 text-white"
                         : "bg-gray-200 dark:bg-gray-700 dark:text-gray-100"
                     }`}
                   >
-                    {loc}
+                    {city}
                   </button>
                   <button
-                    onClick={() => removeSavedLocation(loc)}
+                    onClick={() => removeSavedLocation(city)}
                     className="text-red-500 hover:text-red-700"
                   >
                     ×
@@ -185,20 +175,10 @@ function App() {
           </div>
         )}
 
-        {isOffline && (
-          <div className="p-2 mb-4 bg-red-100 dark:bg-red-400 text-white-700 dark:text-white-200 rounded text-center">
-            You are offline. Showing cached data.
-          </div>
-        )}
-
         {loading && <div className="py-8 text-center">Loading weather data...</div>}
-        {error && (
-          <div className="bg-red-100 dark:bg-red-900 text-white-700 dark:text-red-300 p-4 rounded my-4">
-            {error}
-          </div>
-        )}
+        {error && <div className="bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 p-4 rounded my-4">{error}</div>}
 
-        {weatherData && (
+        {weatherData && !loading && (
           <div className="weather-container mt-4">
             <CurrentWeather data={weatherData} units={units} />
             {forecastData && <Forecast data={forecastData} units={units} showHourly />}
