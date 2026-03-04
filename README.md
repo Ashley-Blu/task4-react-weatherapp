@@ -87,8 +87,8 @@ Build Tool: Vite
 
 ## Screenshots
 
-![Project Structure](./src/assets/Screenshots/Screenshot(47).png) 
-![Project Structure](./src/assets/screenshots/Screenshot(48).png) 
-![Project Structure](./src/assets/screenshots/Screenshot(49).png) 
-![Project Structure](./src/assets/screenshots/Screenshot(50).png) 
-![Project Structure](./src/assets/screenshots/Screenshot(51).png) 
+![Project Structure](./src/assets/Screenshots/Screenshot%20(47).png) 
+![Project Structure](./src/assets/screenshots/Screenshot%20(48).png) 
+![Project Structure](./src/assets/screenshots/Screenshot%20(49).png) 
+![Project Structure](./src/assets/screenshots/Screenshot%20(50).png) 
+![Project Structure](./src/assets/screenshots/Screenshot%20(51).png) 
