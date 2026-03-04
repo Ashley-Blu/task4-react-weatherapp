@@ -84,3 +84,11 @@ State Management: React Hooks
 API: OpenWeatherMap (or any other weather API)
 
 Build Tool: Vite
+
+## Screenshots
+
+![Project Structure](./src/assets/screenshots/Screenshots(47).png) 
+![Project Structure](./src/assets/screenshots/Screenshots(48).png) 
+![Project Structure](./src/assets/screenshots/Screenshots(49).png) 
+![Project Structure](./src/assets/screenshots/Screenshots(50).png) 
+![Project Structure](./src/assets/screenshots/Screenshots(52).png) 
